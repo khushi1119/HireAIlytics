@@ -2,10 +2,10 @@ import { usePuterStore } from "~/lib/puter";
 import { useLocation, useNavigate } from "react-router";
 import { useEffect } from "react";
 
-export const meta = () => [
+export const meta = () => ([
     { title: "HireAIlytics | Auth" },
     { name: "description", content: "Log into your account" },
-];
+]);
 
 const Auth = () => {
     const { isLoading, auth } = usePuterStore();
