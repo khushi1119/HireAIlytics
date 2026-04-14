@@ -19,7 +19,7 @@ const Resume=()=>{
         if(!isLoading && !auth.isAuthenticated){
             navigate(`/auth?next=/resume/${id}`)
         }
-    },[isLoading]);
+    },[isLoading ,auth, id]);
 
     useEffect(()=>{
         const loadResume = async ()=>{

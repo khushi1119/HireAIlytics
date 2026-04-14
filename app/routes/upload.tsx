@@ -5,7 +5,7 @@ import {usePuterStore} from "~/lib/puter";
 import {useNavigate} from "react-router";
 import {convertPdfToImage} from "~/lib/pdf2img";
 import {generateUUID} from "~/lib/utils";
-import {prepareInstructions} from "../../constants";
+import {prepareInstructions, AIResponseFormat} from "../../constants";
 
 const Upload = () => {
     const { auth, isLoading, fs, ai, kv } = usePuterStore();
@@ -51,33 +51,82 @@ const Upload = () => {
         try {
             feedback = await ai.feedback(
                 uploadedFile.path,
-                prepareInstructions({ jobTitle, jobDescription })
+                prepareInstructions({ jobTitle, jobDescription,AIResponseFormat })
             );
+
+            console.log("AI raw response:", feedback);
+
         } catch (error) {
             console.error("AI analysis failed:", error);
             setStatusText("Error: AI analysis failed");
             return;
         }
 
-        if (!feedback) return setStatusText("Error: Failed to analyze resume");
-
-        const feedbackText =
-            typeof feedback.message.content === "string"
-                ? feedback.message.content
-                : feedback.message.content[0].text;
-
-
-        try {
-            data.feedback = JSON.parse(feedbackText);
-        } catch {
-            data.feedback = { raw: feedbackText };
+        if (!feedback) {
+            setStatusText("Error: Failed to analyze resume");
+            return;
         }
 
+
+        /* STEP 1 — Extract AI text safely */
+        const feedbackText =
+            typeof feedback?.message?.content === "string"
+                ? feedback.message.content
+                : feedback?.message?.content?.[0]?.text || "";
+
+        console.log("AI text response:", feedbackText);
+
+
+        /* STEP 2 — Extract JSON from AI response */
+        let jsonText = feedbackText;
+
+        const jsonMatch = feedbackText.match(/\{[\s\S]*\}/);
+
+        if (jsonMatch) {
+            jsonText = jsonMatch[0];
+        }
+
+        console.log("Extracted JSON:", jsonText);
+
+
+        /* STEP 3 — Parse JSON safely */
+        try {
+
+            const parsed = JSON.parse(jsonText);
+
+            data.feedback = {
+                overallScore: parsed?.overallScore ?? 0,
+                ATS: parsed?.ATS ?? { score: 0, tips: [] },
+                toneAndStyle: parsed?.toneAndStyle ?? { score: 0, tips: [] },
+                content: parsed?.content ?? { score: 0, tips: [] },
+                structure: parsed?.structure ?? { score: 0, tips: [] },
+                skills: parsed?.skills ?? { score: 0, tips: [] },
+            };
+
+            console.log("Parsed feedback:", data.feedback);
+
+        } catch (err) {
+
+            console.error("JSON parse failed:", err);
+
+            data.feedback = {
+                overallScore: 0,
+                ATS: { score: 0, tips: [] },
+                toneAndStyle: { score: 0, tips: [] },
+                content: { score: 0, tips: [] },
+                structure: { score: 0, tips: [] },
+                skills: { score: 0, tips: [] }
+            };
+
+        }
+
+
+        /* STEP 4 — Save updated data */
         await kv.set(`resume:${uuid}`, JSON.stringify(data));
 
-        setStatusText('Analysis complete, redirecting...');
+        setStatusText("Analysis complete, redirecting...");
 
-        console.log(data);
+        console.log("Stored data:", data);
 
         navigate(`/resume/${uuid}`);
     }
