@@ -12,6 +12,11 @@ import "./app.css";
 import {usePuterStore} from "~/lib/puter";
 import {useEffect} from "react";
 
+export const meta = () => [
+  { title: "HireAIlytics" },
+  { name: "description", content: "AI-powered Resume Analyzer" },
+];
+
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
